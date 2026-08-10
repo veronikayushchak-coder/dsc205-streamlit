@@ -36,7 +36,7 @@ income_range = st.slider(
     min_value=min_income,
     max_value=max_income,
     value=(min_income, max_income),
-    step=1000
+    step=100
 )
 
 income_df = df[
