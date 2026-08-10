@@ -80,3 +80,9 @@ plt.xticks(rotation=45, ha='right')
 
 st.pyplot(fig, clear_figure=True)
 
+st.write(
+    df.nlargest(10, 'Median household income')[
+        ['Place', 'Type', 'County', 'Median household income']
+    ]
+)
+
