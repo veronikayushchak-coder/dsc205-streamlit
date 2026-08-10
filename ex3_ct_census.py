@@ -66,7 +66,7 @@ top_bottom = pd.concat([lowest, highest])
 fig, ax = plt.subplots(figsize=(10, 5))
 
 ax.bar(
-    top_bottom['City'],
+    top_bottom['Place'],
     top_bottom['Median household income']
 )
 
