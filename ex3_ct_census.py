@@ -50,3 +50,33 @@ st.dataframe(
     height=200
 )
 
+#3. Highest and lowest incomes
+st.subheader('Highest and Lowest Median Household Income')
+lowest = df.nsmallest(
+    5,
+    'Median household income'
+)
+
+highest = df.nlargest(
+    5,
+    'Median household income'
+)
+
+top_bottom = pd.concat([lowest, highest])
+fig, ax = plt.subplots(figsize=(10, 5))
+
+ax.bar(
+    top_bottom['Town'],
+    top_bottom['Median household income']
+)
+
+ax.set_xlabel('City / Town')
+ax.set_ylabel('Median Household Income ($)')
+ax.set_title(
+    '5 Cities/Towns with Highest and Lowest Median Household Income'
+)
+
+plt.xticks(rotation=45, ha='right')
+
+st.pyplot(fig, clear_figure=True)
+
