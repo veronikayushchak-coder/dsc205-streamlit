@@ -147,10 +147,6 @@ st.write(
 )
 
 
-# ---------------------------------------------------------
-# MAP YEAR
-# ---------------------------------------------------------
-
 map_years = sorted(
     df["Year"].dropna().unique()
 )
@@ -163,18 +159,10 @@ map_year = st.select_slider(
 )
 
 
-# ---------------------------------------------------------
-# MAP DATA
-# ---------------------------------------------------------
-
 map_data = df[
     df["Year"] == map_year
 ].copy()
 
-
-# ---------------------------------------------------------
-# WORLD MAP
-# ---------------------------------------------------------
 
 fig_map = px.choropleth(
     map_data,
@@ -205,9 +193,9 @@ st.plotly_chart(
 )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # MAP SUMMARY
-# ---------------------------------------------------------
+# =========================================================
 
 col1, col2, col3 = st.columns(3)
 
@@ -251,10 +239,6 @@ st.write(
 )
 
 
-# ---------------------------------------------------------
-# COUNTRY SELECTOR
-# ---------------------------------------------------------
-
 all_countries = sorted(
     df["Country"].dropna().unique()
 )
@@ -266,18 +250,10 @@ trend_country = st.selectbox(
 )
 
 
-# ---------------------------------------------------------
-# COUNTRY DATA
-# ---------------------------------------------------------
-
 country_trend = df[
     df["Country"] == trend_country
 ].sort_values("Year")
 
-
-# ---------------------------------------------------------
-# LINE CHART
-# ---------------------------------------------------------
 
 fig_trend = px.line(
     country_trend,
@@ -326,7 +302,7 @@ st.write(
 
 
 # =========================================================
-# SELECT YEAR FIRST
+# SELECT YEAR
 # =========================================================
 
 comparison_years = sorted(
@@ -342,40 +318,89 @@ comparison_year = st.selectbox(
 
 
 # =========================================================
-# FIND COUNTRIES AVAILABLE FOR SELECTED YEAR
+# FIND COUNTRIES WITH COMPLETE DATA
 # =========================================================
 
-# Life expectancy countries
+# ---------------------------------------------------------
+# LIFE EXPECTANCY
+# ---------------------------------------------------------
+
+life_available = df[
+    df["Year"] == comparison_year
+].dropna(
+    subset=[
+        "Country",
+        "Life Expectancy"
+    ]
+)
+
+
+# ---------------------------------------------------------
+# GDP
+# ---------------------------------------------------------
+
+if gdp_column is not None:
+
+    gdp_available = gdp_df[
+        gdp_df["Year"] == comparison_year
+    ].copy()
+
+    gdp_available = gdp_available.dropna(
+        subset=[
+            "Country",
+            gdp_column
+        ]
+    )
+
+else:
+
+    gdp_available = pd.DataFrame()
+
+
+# ---------------------------------------------------------
+# HEALTH EXPENDITURE
+# ---------------------------------------------------------
+
+health_available = health_df[
+    health_df["Year"] == comparison_year
+].copy()
+
+health_available = health_available.dropna(
+    subset=[
+        "Country",
+        "Health Expenditure"
+    ]
+)
+
+
+# ---------------------------------------------------------
+# COUNTRY SETS
+# ---------------------------------------------------------
+
 life_countries = set(
-    df.loc[
-        df["Year"] == comparison_year,
-        "Country"
-    ]
-    .dropna()
+    life_available["Country"]
 )
 
+if not gdp_available.empty:
 
-# GDP countries
-gdp_countries = set(
-    gdp_df.loc[
-        gdp_df["Year"] == comparison_year,
-        "Country"
-    ]
-    .dropna()
-)
+    gdp_countries = set(
+        gdp_available["Country"]
+    )
+
+else:
+
+    gdp_countries = set()
 
 
-# Health expenditure countries
 health_countries = set(
-    health_df.loc[
-        health_df["Year"] == comparison_year,
-        "Country"
-    ]
-    .dropna()
+    health_available["Country"]
 )
 
 
-# Countries available in all three datasets
+# ---------------------------------------------------------
+# ONLY COMPLETE COUNTRIES
+# ---------------------------------------------------------
+
 countries_for_year = sorted(
     life_countries
     & gdp_countries
@@ -398,8 +423,8 @@ if countries_for_year:
 else:
 
     st.warning(
-        f"No countries have data available in all "
-        f"three datasets for {comparison_year}."
+        f"No countries have complete data for "
+        f"{comparison_year}."
     )
 
     st.stop()
@@ -428,7 +453,7 @@ if not selected_life.empty:
 
 
 # =========================================================
-# HEALTH SPENDING
+# 1. HEALTH SPENDING
 # =========================================================
 
 st.subheader(
@@ -483,7 +508,7 @@ else:
 
 
 # =========================================================
-# GDP
+# 2. GDP
 # =========================================================
 
 st.subheader(
@@ -497,6 +522,7 @@ if gdp_column is not None:
         (gdp_df["Country"] == selected_country)
         & (gdp_df["Year"] == comparison_year)
     ].copy()
+
 
     gdp_selected = gdp_selected.dropna(
         subset=[
@@ -545,7 +571,7 @@ else:
 
 
 # =========================================================
-# POPULATION
+# 3. POPULATION
 # =========================================================
 
 st.subheader(
@@ -559,6 +585,7 @@ if population_column is not None:
         (df["Country"] == selected_country)
         & (df["Year"] == comparison_year)
     ].copy()
+
 
     population_selected = population_selected.dropna(
         subset=[
