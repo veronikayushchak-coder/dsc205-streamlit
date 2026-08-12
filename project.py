@@ -55,7 +55,7 @@ df, gdp_df, health_df = load_data()
 
 
 # =========================================================
-# CLEAN COLUMN NAMES
+# STANDARDIZE COLUMN NAMES
 # =========================================================
 
 df = df.rename(
@@ -67,15 +67,13 @@ df = df.rename(
 
 gdp_df = gdp_df.rename(
     columns={
-        "Entity": "Country",
-        "Life expectancy": "Life Expectancy"
+        "Entity": "Country"
     }
 )
 
 health_df = health_df.rename(
     columns={
         "Entity": "Country",
-        "Life expectancy": "Life Expectancy",
         "Health expenditure per capita":
             "Health Expenditure"
     }
@@ -90,28 +88,26 @@ gdp_column = None
 
 for column in gdp_df.columns:
 
-    column_lower = column.lower()
-
-    if "gdp" in column_lower and "capita" in column_lower:
+    if (
+        "gdp" in column.lower()
+        and "capita" in column.lower()
+    ):
 
         gdp_column = column
         break
 
 
 # =========================================================
-# FIND REGION COLUMN
+# MAKE SURE LIFE EXPECTANCY EXISTS
 # =========================================================
 
-region_column = None
+if "Life Expectancy" not in df.columns:
 
-for column in df.columns:
+    st.error(
+        "The life expectancy column could not be found."
+    )
 
-    column_lower = column.lower()
-
-    if "region" in column_lower:
-
-        region_column = column
-        break
+    st.stop()
 
 
 # =========================================================
@@ -144,6 +140,7 @@ map_years = sorted(
     df["Year"].dropna().unique()
 )
 
+
 map_year = st.select_slider(
     "Select Year",
     options=map_years,
@@ -155,7 +152,10 @@ map_year = st.select_slider(
 map_data = df[
     df["Year"] == map_year
 ].dropna(
-    subset=["Country", "Life Expectancy"]
+    subset=[
+        "Country",
+        "Life Expectancy"
+    ]
 ).copy()
 
 
@@ -173,6 +173,7 @@ fig_map = px.choropleth(
     }
 )
 
+
 fig_map.update_layout(
     margin=dict(
         l=0,
@@ -181,6 +182,7 @@ fig_map.update_layout(
         b=0
     )
 )
+
 
 st.plotly_chart(
     fig_map,
@@ -207,12 +209,14 @@ average_life = map_data[
 
 col1, col2, col3, col4 = st.columns(4)
 
+
 with col1:
 
     st.metric(
         "Global Average",
         f"{average_life:.1f} years"
     )
+
 
 with col2:
 
@@ -225,6 +229,7 @@ with col2:
         highest_country["Country"]
     )
 
+
 with col3:
 
     st.metric(
@@ -236,6 +241,7 @@ with col3:
         lowest_country["Country"]
     )
 
+
 with col4:
 
     st.metric(
@@ -245,11 +251,11 @@ with col4:
 
 
 # =========================================================
-# TOP 10 COUNTRIES
+# TOP 10
 # =========================================================
 
 st.subheader(
-    f"🏆 Countries with the Highest Life Expectancy — {map_year}"
+    f"🏆 Highest Life Expectancy — {map_year}"
 )
 
 
@@ -271,6 +277,7 @@ fig_top = px.bar(
     }
 )
 
+
 st.plotly_chart(
     fig_top,
     use_container_width=True
@@ -287,13 +294,14 @@ st.header("📈 Life Expectancy Over Time")
 
 st.write(
     "Select a country to see how its life expectancy "
-    "has changed throughout the available years."
+    "has changed over time."
 )
 
 
 all_countries = sorted(
     df["Country"].dropna().unique()
 )
+
 
 trend_country = st.selectbox(
     "Select Country",
@@ -322,6 +330,7 @@ fig_trend = px.line(
     }
 )
 
+
 st.plotly_chart(
     fig_trend,
     use_container_width=True
@@ -329,31 +338,23 @@ st.plotly_chart(
 
 
 # =========================================================
-# COUNTRY HISTORY STATISTICS
+# COUNTRY STATISTICS
 # =========================================================
 
-if len(country_trend) > 0:
+if not country_trend.empty:
 
     first_value = country_trend[
         "Life Expectancy"
     ].iloc[0]
 
-    last_value = country_trend[
+    latest_value = country_trend[
         "Life Expectancy"
     ].iloc[-1]
 
-    change = last_value - first_value
-
-    if first_value != 0:
-
-        percentage_change = (
-            change / first_value
-        ) * 100
-
-    else:
-
-        percentage_change = 0
-
+    total_change = (
+        latest_value -
+        first_value
+    )
 
     highest_value = country_trend[
         "Life Expectancy"
@@ -367,6 +368,7 @@ if len(country_trend) > 0:
 
     c1, c2, c3, c4 = st.columns(4)
 
+
     with c1:
 
         st.metric(
@@ -374,19 +376,22 @@ if len(country_trend) > 0:
             f"{first_value:.1f} years"
         )
 
+
     with c2:
 
         st.metric(
             "Latest Available",
-            f"{last_value:.1f} years"
+            f"{latest_value:.1f} years"
         )
+
 
     with c3:
 
         st.metric(
             "Total Change",
-            f"{change:+.1f} years"
+            f"{total_change:+.1f} years"
         )
+
 
     with c4:
 
@@ -396,7 +401,7 @@ if len(country_trend) > 0:
         )
 
         st.caption(
-            f"Year: {int(highest_year)}"
+            f"{int(highest_year)}"
         )
 
 
@@ -410,8 +415,8 @@ st.header("📊 Compare Countries")
 
 st.write(
     """
-    Choose a factor first. The available years and countries
-    will automatically update based on your selection.
+    Choose what you want to compare first.
+    Available years and countries will update automatically.
     """
 )
 
@@ -454,17 +459,21 @@ else:
 
 
 # =========================================================
-# AVAILABLE YEARS
+# CHECK COLUMN
 # =========================================================
 
 if value_column is None:
 
     st.error(
-        "The selected variable could not be found."
+        "The selected data column could not be found."
     )
 
     st.stop()
 
+
+# =========================================================
+# AVAILABLE YEARS
+# =========================================================
 
 years_available = sorted(
     comparison_df[
@@ -473,6 +482,15 @@ years_available = sorted(
     .dropna()
     .unique()
 )
+
+
+if len(years_available) == 0:
+
+    st.warning(
+        "No years are available for this selection."
+    )
+
+    st.stop()
 
 
 comparison_year = st.selectbox(
@@ -484,7 +502,7 @@ comparison_year = st.selectbox(
 
 
 # =========================================================
-# AVAILABLE COUNTRIES
+# COUNTRIES WITH DATA
 # =========================================================
 
 available_data = comparison_df[
@@ -508,50 +526,53 @@ available_countries = sorted(
 if len(available_countries) < 3:
 
     st.warning(
-        "There are fewer than 3 countries with "
-        "complete data for this selection."
+        "Fewer than 3 countries have data for "
+        "this selection."
     )
 
     st.stop()
 
 
 # =========================================================
-# SELECT THREE COUNTRIES
+# THREE COUNTRY SELECTORS
 # =========================================================
 
 st.subheader("🌎 Select Three Countries")
 
-c1, c2, c3 = st.columns(3)
+
+country_col1, country_col2, country_col3 = st.columns(3)
 
 
-with c1:
+with country_col1:
 
     country_1 = st.selectbox(
         "Country 1",
         available_countries,
-        key="comparison_country_1"
+        key="country_1"
     )
 
 
-with c2:
+with country_col2:
 
     country_2_options = [
-        x for x in available_countries
-        if x != country_1
+        country
+        for country in available_countries
+        if country != country_1
     ]
 
     country_2 = st.selectbox(
         "Country 2",
         country_2_options,
-        key="comparison_country_2"
+        key="country_2"
     )
 
 
-with c3:
+with country_col3:
 
     country_3_options = [
-        x for x in available_countries
-        if x not in [
+        country
+        for country in available_countries
+        if country not in [
             country_1,
             country_2
         ]
@@ -560,7 +581,7 @@ with c3:
     country_3 = st.selectbox(
         "Country 3",
         country_3_options,
-        key="comparison_country_3"
+        key="country_3"
     )
 
 
@@ -588,7 +609,7 @@ comparison_chart_data = available_data[
 
 
 # =========================================================
-# BAR CHART
+# COMPARISON BAR CHART
 # =========================================================
 
 fig_compare = px.bar(
@@ -606,9 +627,11 @@ fig_compare = px.bar(
     }
 )
 
+
 fig_compare.update_traces(
     textposition="outside"
 )
+
 
 st.plotly_chart(
     fig_compare,
@@ -617,19 +640,17 @@ st.plotly_chart(
 
 
 # =========================================================
-# SECTION 4 — GDP / HEALTH RELATIONSHIPS
+# SECTION 4 — RELATIONSHIPS
 # =========================================================
 
 st.divider()
 
-st.header(
-    "🔬 Life Expectancy and Other Factors"
-)
+st.header("🔬 Life Expectancy and Other Factors")
 
 st.write(
     """
-    Explore whether countries with higher GDP or greater
-    health spending tend to have higher life expectancy.
+    Explore the relationship between life expectancy
+    and GDP or health spending.
     """
 )
 
@@ -646,15 +667,15 @@ relationship_choice = st.radio(
 
 
 # =========================================================
-# GDP RELATIONSHIP
+# GDP SCATTERPLOT
 # =========================================================
 
 if relationship_choice == "GDP per Capita":
 
     if gdp_column is None:
 
-        st.warning(
-            "GDP data could not be found."
+        st.error(
+            "GDP per capita column was not found."
         )
 
         st.stop()
@@ -673,19 +694,45 @@ if relationship_choice == "GDP per Capita":
         "Select Year",
         relationship_years,
         index=len(relationship_years) - 1,
-        key="gdp_year"
+        key="relationship_gdp_year"
     )
 
 
     scatter_data = gdp_df[
         gdp_df["Year"] == relationship_year
-    ].dropna(
+    ].copy()
+
+
+    # -----------------------------------------------------
+    # MERGE LIFE EXPECTANCY
+    # -----------------------------------------------------
+
+    life_for_merge = df[
+        [
+            "Country",
+            "Year",
+            "Life Expectancy"
+        ]
+    ].copy()
+
+
+    scatter_data = scatter_data.merge(
+        life_for_merge,
+        on=[
+            "Country",
+            "Year"
+        ],
+        how="left"
+    )
+
+
+    scatter_data = scatter_data.dropna(
         subset=[
             "Country",
-            "Life Expectancy",
-            gdp_column
+            gdp_column,
+            "Life Expectancy"
         ]
-    ).copy()
+    )
 
 
     x_column = gdp_column
@@ -694,7 +741,7 @@ if relationship_choice == "GDP per Capita":
 
 
 # =========================================================
-# HEALTH RELATIONSHIP
+# HEALTH SCATTERPLOT
 # =========================================================
 
 else:
@@ -712,19 +759,45 @@ else:
         "Select Year",
         relationship_years,
         index=len(relationship_years) - 1,
-        key="health_year"
+        key="relationship_health_year"
     )
 
 
     scatter_data = health_df[
         health_df["Year"] == relationship_year
-    ].dropna(
+    ].copy()
+
+
+    # -----------------------------------------------------
+    # MERGE LIFE EXPECTANCY
+    # -----------------------------------------------------
+
+    life_for_merge = df[
+        [
+            "Country",
+            "Year",
+            "Life Expectancy"
+        ]
+    ].copy()
+
+
+    scatter_data = scatter_data.merge(
+        life_for_merge,
+        on=[
+            "Country",
+            "Year"
+        ],
+        how="left"
+    )
+
+
+    scatter_data = scatter_data.dropna(
         subset=[
             "Country",
-            "Life Expectancy",
-            "Health Expenditure"
+            "Health Expenditure",
+            "Life Expectancy"
         ]
-    ).copy()
+    )
 
 
     x_column = "Health Expenditure"
@@ -741,10 +814,9 @@ fig_scatter = px.scatter(
     x=x_column,
     y="Life Expectancy",
     hover_name="Country",
-    trendline="ols",
     title=(
-        f"Life Expectancy vs "
-        f"{x_label} — {relationship_year}"
+        f"Life Expectancy vs {x_label} "
+        f"— {relationship_year}"
     ),
     labels={
         x_column: x_label,
@@ -752,6 +824,7 @@ fig_scatter = px.scatter(
             "Life Expectancy (years)"
     }
 )
+
 
 st.plotly_chart(
     fig_scatter,
@@ -763,49 +836,54 @@ st.plotly_chart(
 # CORRELATION
 # =========================================================
 
-correlation = scatter_data[
-    [x_column, "Life Expectancy"]
-].corr().iloc[0, 1]
+if len(scatter_data) >= 2:
+
+    correlation = scatter_data[
+        [
+            x_column,
+            "Life Expectancy"
+        ]
+    ].corr().iloc[0, 1]
 
 
-st.metric(
-    "Correlation",
-    f"{correlation:.2f}"
-)
-
-
-if correlation >= 0.7:
-
-    st.info(
-        "There is a strong positive relationship between "
-        f"{x_label.lower()} and life expectancy in this year."
-    )
-
-elif correlation >= 0.3:
-
-    st.info(
-        "There is a moderate positive relationship between "
-        f"{x_label.lower()} and life expectancy in this year."
-    )
-
-elif correlation > -0.3:
-
-    st.info(
-        "There is a weak relationship between these variables "
-        "in this year."
-    )
-
-else:
-
-    st.info(
-        "There is a negative relationship between these "
-        "variables in this year."
+    st.metric(
+        "Correlation",
+        f"{correlation:.2f}"
     )
 
 
-st.caption(
-    "Correlation shows association, not causation."
-)
+    if correlation >= 0.7:
+
+        st.info(
+            "There is a strong positive relationship "
+            "between these variables."
+        )
+
+    elif correlation >= 0.3:
+
+        st.info(
+            "There is a moderate positive relationship "
+            "between these variables."
+        )
+
+    elif correlation > -0.3:
+
+        st.info(
+            "There is a weak relationship between "
+            "these variables."
+        )
+
+    else:
+
+        st.info(
+            "There is a negative relationship between "
+            "these variables."
+        )
+
+
+    st.caption(
+        "Correlation shows association, not causation."
+    )
 
 
 # =========================================================
@@ -816,13 +894,8 @@ st.divider()
 
 st.header("🔎 Country Profile")
 
-st.write(
-    "Select a country to see a summary of its life expectancy."
-)
-
-
 profile_country = st.selectbox(
-    "Select Country",
+    "Choose a country",
     all_countries,
     key="profile_country"
 )
@@ -858,18 +931,9 @@ if not profile_data.empty:
         "Life Expectancy"
     ].min()
 
-    profile_highest_year = profile_data.loc[
-        profile_data["Life Expectancy"].idxmax(),
-        "Year"
-    ]
-
-    profile_lowest_year = profile_data.loc[
-        profile_data["Life Expectancy"].idxmin(),
-        "Year"
-    ]
-
 
     p1, p2, p3, p4 = st.columns(4)
+
 
     with p1:
 
@@ -878,6 +942,7 @@ if not profile_data.empty:
             f"{profile_first:.1f} years"
         )
 
+
     with p2:
 
         st.metric(
@@ -885,12 +950,14 @@ if not profile_data.empty:
             f"{profile_latest:.1f} years"
         )
 
+
     with p3:
 
         st.metric(
-            "Change",
+            "Total Change",
             f"{profile_change:+.1f} years"
         )
+
 
     with p4:
 
@@ -898,17 +965,6 @@ if not profile_data.empty:
             "Highest",
             f"{profile_highest:.1f} years"
         )
-
-
-    st.write(
-        f"**Highest:** {profile_highest:.1f} years "
-        f"({int(profile_highest_year)})"
-    )
-
-    st.write(
-        f"**Lowest:** {profile_lowest:.1f} years "
-        f"({int(profile_lowest_year)})"
-    )
 
 
     profile_fig = px.line(
@@ -926,6 +982,7 @@ if not profile_data.empty:
         }
     )
 
+
     st.plotly_chart(
         profile_fig,
         use_container_width=True
@@ -933,12 +990,13 @@ if not profile_data.empty:
 
 
 # =========================================================
-# KEY FINDING
+# SECTION 6 — KEY FINDING
 # =========================================================
 
 st.divider()
 
 st.header("💡 Key Finding")
+
 
 if not map_data.empty:
 
@@ -948,19 +1006,24 @@ if not map_data.empty:
         lowest_country["Life Expectancy"]
     )
 
+
     st.write(
         f"In **{map_year}**, the difference between "
-        f"the country with the highest and lowest "
-        f"life expectancy was approximately "
-        f"**{difference:.1f} years**."
+        f"the highest and lowest life expectancy "
+        f"was **{difference:.1f} years**."
     )
+
 
     st.write(
         f"**{highest_country['Country']}** had the highest "
         f"life expectancy at "
-        f"**{highest_country['Life Expectancy']:.1f} years**, "
-        f"while **{lowest_country['Country']}** had the "
-        f"lowest at "
+        f"**{highest_country['Life Expectancy']:.1f} years**."
+    )
+
+
+    st.write(
+        f"**{lowest_country['Country']}** had the lowest "
+        f"life expectancy at "
         f"**{lowest_country['Life Expectancy']:.1f} years**."
     )
 
