@@ -186,3 +186,236 @@ st.plotly_chart(
     fig,
     use_container_width=True
 )
+
+# ==================================================
+# LIFE EXPECTANCY COMPARISONS
+# ==================================================
+
+st.divider()
+
+st.header("📊 Life Expectancy Compared with Other Factors")
+
+st.write(
+    "Explore how life expectancy is related to health spending, "
+    "GDP per capita, and population."
+)
+
+# --------------------------------------------------
+# LOAD GDP DATA
+# --------------------------------------------------
+
+gdp_url = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy-vs-gdp-per-capita.csv"
+)
+
+gdp_df = pd.read_csv(gdp_url)
+
+gdp_df = gdp_df.rename(
+    columns={
+        "Entity": "Country",
+        "Life expectancy": "Life Expectancy"
+    }
+)
+
+# Find GDP column
+possible_gdp_columns = [
+    "GDP per capita",
+    "GDP per Capita",
+    "GDP per capita, PPP",
+    "GDP per capita (int. $)"
+]
+
+gdp_column = None
+
+for column in possible_gdp_columns:
+    if column in gdp_df.columns:
+        gdp_column = column
+        break
+
+
+# --------------------------------------------------
+# LOAD HEALTH EXPENDITURE DATA
+# --------------------------------------------------
+
+health_url = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy-vs-health-expenditure.csv"
+)
+
+health_df = pd.read_csv(health_url)
+
+health_df = health_df.rename(
+    columns={
+        "Entity": "Country",
+        "Life expectancy": "Life Expectancy",
+        "Health expenditure per capita":
+            "Health Expenditure"
+    }
+)
+
+
+# --------------------------------------------------
+# PREPARE POPULATION DATA
+# --------------------------------------------------
+
+population_column = None
+
+possible_population_columns = [
+    "Population",
+    "population",
+    "Population (historical)",
+    "Population - Sex: all - Age: all - Variant: estimates"
+]
+
+for column in possible_population_columns:
+    if column in df.columns:
+        population_column = column
+        break
+
+
+# --------------------------------------------------
+# YEAR SELECTOR
+# --------------------------------------------------
+
+comparison_years = sorted(
+    df["Year"].dropna().unique()
+)
+
+comparison_year = st.select_slider(
+    "Select Year for Comparison",
+    options=comparison_years,
+    value=comparison_years[-1],
+    key="comparison_year"
+)
+
+
+# ==================================================
+# 1. LIFE EXPECTANCY VS HEALTH SPENDING
+# ==================================================
+
+st.subheader("🏥 Life Expectancy vs Health Spending")
+
+health_year = health_df[
+    health_df["Year"] == comparison_year
+].copy()
+
+health_year = health_year.dropna(
+    subset=[
+        "Life Expectancy",
+        "Health Expenditure"
+    ]
+)
+
+fig_health = px.scatter(
+    health_year,
+    x="Health Expenditure",
+    y="Life Expectancy",
+    hover_name="Country",
+    title=f"Life Expectancy vs Health Spending — {comparison_year}",
+    labels={
+        "Health Expenditure":
+            "Health Spending per Capita",
+        "Life Expectancy":
+            "Life Expectancy (years)"
+    }
+)
+
+st.plotly_chart(
+    fig_health,
+    use_container_width=True
+)
+
+
+# ==================================================
+# 2. LIFE EXPECTANCY VS GDP
+# ==================================================
+
+st.subheader("💰 Life Expectancy vs GDP per Capita")
+
+if gdp_column is not None:
+
+    gdp_year = gdp_df[
+        gdp_df["Year"] == comparison_year
+    ].copy()
+
+    gdp_year = gdp_year.dropna(
+        subset=[
+            "Life Expectancy",
+            gdp_column
+        ]
+    )
+
+    fig_gdp = px.scatter(
+        gdp_year,
+        x=gdp_column,
+        y="Life Expectancy",
+        hover_name="Country",
+        title=f"Life Expectancy vs GDP per Capita — {comparison_year}",
+        labels={
+            gdp_column:
+                "GDP per Capita",
+            "Life Expectancy":
+                "Life Expectancy (years)"
+        }
+    )
+
+    st.plotly_chart(
+        fig_gdp,
+        use_container_width=True
+    )
+
+else:
+
+    st.warning(
+        "GDP per capita column was not found."
+    )
+
+
+# ==================================================
+# 3. LIFE EXPECTANCY VS POPULATION
+# ==================================================
+
+st.subheader("👥 Life Expectancy vs Population")
+
+if population_column is not None:
+
+    population_year = df[
+        df["Year"] == comparison_year
+    ].copy()
+
+    population_year = population_year.dropna(
+        subset=[
+            "Life Expectancy",
+            population_column
+        ]
+    )
+
+    fig_population = px.scatter(
+        population_year,
+        x=population_column,
+        y="Life Expectancy",
+        hover_name="Country",
+        title=f"Life Expectancy vs Population — {comparison_year}",
+        labels={
+            population_column:
+                "Population",
+            "Life Expectancy":
+                "Life Expectancy (years)"
+        },
+        log_x=True
+    )
+
+    st.plotly_chart(
+        fig_population,
+        use_container_width=True
+    )
+
+else:
+
+    st.warning(
+        "A population column was not found in "
+        "life-expectancy.csv."
+    )
