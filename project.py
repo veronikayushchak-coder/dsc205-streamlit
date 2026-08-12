@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --------------------------------------------------
+# =========================================================
 # PAGE SETUP
-# --------------------------------------------------
+# =========================================================
 
 st.set_page_config(
     page_title="Life Expectancy Analysis",
@@ -12,87 +12,140 @@ st.set_page_config(
     layout="wide"
 )
 
-# --------------------------------------------------
+# =========================================================
+# DATA URLS
+# =========================================================
+
+LIFE_URL = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy.csv"
+)
+
+GDP_URL = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy-vs-gdp-per-capita.csv"
+)
+
+HEALTH_URL = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy-vs-health-expenditure.csv"
+)
+
+
+# =========================================================
 # LOAD DATA
-# --------------------------------------------------
+# =========================================================
 
 @st.cache_data
 def load_data():
 
-    life_expectancy = pd.read_csv(
-        "life-expectancy.csv"
-    )
+    life_df = pd.read_csv(LIFE_URL)
+    gdp_df = pd.read_csv(GDP_URL)
+    health_df = pd.read_csv(HEALTH_URL)
 
-    gdp = pd.read_csv(
-        "life-expectancy-vs-gdp-per-capita.csv"
-    )
-
-    health = pd.read_csv(
-        "life-expectancy-vs-health-expenditure.csv"
-    )
-
-    return life_expectancy, gdp, health
+    return life_df, gdp_df, health_df
 
 
 life_df, gdp_df, health_df = load_data()
 
 
-# --------------------------------------------------
-# TITLE
-# --------------------------------------------------
+# =========================================================
+# CLEAN COLUMN NAMES
+# =========================================================
+
+life_df = life_df.rename(
+    columns={
+        "Entity": "Country",
+        "Life expectancy": "Life Expectancy"
+    }
+)
+
+gdp_df = gdp_df.rename(
+    columns={
+        "Entity": "Country",
+        "Life expectancy": "Life Expectancy"
+    }
+)
+
+health_df = health_df.rename(
+    columns={
+        "Entity": "Country",
+        "Life expectancy": "Life Expectancy",
+        "Health expenditure per capita":
+            "Health Expenditure"
+    }
+)
+
+
+# =========================================================
+# FIND GDP COLUMN
+# =========================================================
+
+possible_gdp_columns = [
+    "GDP per capita",
+    "GDP per Capita",
+    "GDP per capita, PPP",
+    "GDP per capita (int. $)"
+]
+
+gdp_column = None
+
+for column in possible_gdp_columns:
+
+    if column in gdp_df.columns:
+        gdp_column = column
+        break
+
+
+# =========================================================
+# MAIN TITLE
+# =========================================================
 
 st.title("🌍 Life Expectancy Analysis")
 
 st.write(
-    "This interactive dashboard explores life expectancy "
-    "and its relationship with GDP per capita and health "
-    "expenditure across countries and years."
+    """
+    This interactive dashboard explores life expectancy
+    across countries and examines its relationship with
+    GDP per capita and health expenditure.
+    """
 )
 
 
-# --------------------------------------------------
+# =========================================================
 # SIDEBAR NAVIGATION
-# --------------------------------------------------
+# =========================================================
 
 st.sidebar.title("Navigation")
 
 page = st.sidebar.radio(
     "Choose a section:",
     [
-        "Life Expectancy",
-        "Life Expectancy vs GDP",
-        "Life Expectancy vs Health Expenditure"
+        "🌍 Life Expectancy",
+        "💰 Life Expectancy vs GDP",
+        "🏥 Life Expectancy vs Health Expenditure"
     ]
 )
 
 
-# ==================================================
+# =========================================================
 # PAGE 1 — LIFE EXPECTANCY
-# ==================================================
+# =========================================================
 
-if page == "Life Expectancy":
+if page == "🌍 Life Expectancy":
 
-    st.header("🌍 Life Expectancy")
+    st.header("Life Expectancy")
 
     st.write(
-        "Explore changes in life expectancy across "
-        "countries and over time."
+        "Explore life expectancy across countries and over time."
     )
 
-    # ----------------------------------------------
-    # Clean columns
-    # ----------------------------------------------
-
-    life_df = life_df.rename(
-        columns={
-            "Entity": "Country",
-            "Life expectancy": "Life Expectancy"
-        }
-    )
-
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # SIDEBAR FILTERS
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     st.sidebar.subheader("Filters")
 
@@ -115,13 +168,13 @@ if page == "Life Expectancy":
         max_year
     )
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # FILTER DATA
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     filtered_life = life_df[
         life_df["Year"] == selected_year
-    ]
+    ].copy()
 
     if selected_country != "All Countries":
 
@@ -129,9 +182,9 @@ if page == "Life Expectancy":
             filtered_life["Country"] == selected_country
         ]
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # METRICS
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     col1, col2, col3 = st.columns(3)
 
@@ -155,20 +208,20 @@ if page == "Life Expectancy":
 
     with col3:
 
-        highest = filtered_life[
+        highest_life = filtered_life[
             "Life Expectancy"
         ].max()
 
         st.metric(
             "Highest Life Expectancy",
-            f"{highest:.1f} years"
+            f"{highest_life:.1f} years"
         )
 
     st.divider()
 
-    # ----------------------------------------------
-    # LIFE EXPECTANCY BY COUNTRY
-    # ----------------------------------------------
+    # -----------------------------------------------------
+    # COUNTRY COMPARISON
+    # -----------------------------------------------------
 
     st.subheader(
         f"Life Expectancy by Country — {selected_year}"
@@ -178,6 +231,7 @@ if page == "Life Expectancy":
 
         top_countries = (
             filtered_life
+            .dropna(subset=["Life Expectancy"])
             .sort_values(
                 "Life Expectancy",
                 ascending=False
@@ -192,10 +246,12 @@ if page == "Life Expectancy":
             x="Life Expectancy",
             y="Country",
             orientation="h",
-            title="Top Countries by Life Expectancy",
+            title="Top 15 Countries by Life Expectancy",
             labels={
                 "Life Expectancy":
-                    "Life Expectancy (years)"
+                    "Life Expectancy (years)",
+                "Country":
+                    "Country"
             }
         )
 
@@ -206,14 +262,20 @@ if page == "Life Expectancy":
 
     else:
 
-        st.metric(
-            selected_country,
-            f"{filtered_life['Life Expectancy'].iloc[0]:.1f} years"
-        )
+        if not filtered_life.empty:
 
-    # ----------------------------------------------
-    # TREND OVER TIME
-    # ----------------------------------------------
+            value = filtered_life[
+                "Life Expectancy"
+            ].iloc[0]
+
+            st.metric(
+                selected_country,
+                f"{value:.1f} years"
+            )
+
+    # -----------------------------------------------------
+    # LIFE EXPECTANCY TREND
+    # -----------------------------------------------------
 
     st.subheader("📈 Life Expectancy Over Time")
 
@@ -231,8 +293,9 @@ if page == "Life Expectancy":
             x="Year",
             y="Life Expectancy",
             markers=True,
-            title="Average Global Life Expectancy",
+            title="Average Life Expectancy Over Time",
             labels={
+                "Year": "Year",
                 "Life Expectancy":
                     "Average Life Expectancy (years)"
             }
@@ -251,6 +314,7 @@ if page == "Life Expectancy":
             markers=True,
             title=f"Life Expectancy in {selected_country}",
             labels={
+                "Year": "Year",
                 "Life Expectancy":
                     "Life Expectancy (years)"
             }
@@ -262,68 +326,44 @@ if page == "Life Expectancy":
     )
 
 
-# ==================================================
+# =========================================================
 # PAGE 2 — LIFE EXPECTANCY VS GDP
-# ==================================================
+# =========================================================
 
-elif page == "Life Expectancy vs GDP":
+elif page == "💰 Life Expectancy vs GDP":
 
-    st.header("💰 Life Expectancy vs GDP per Capita")
+    st.header("Life Expectancy vs GDP per Capita")
 
     st.write(
-        "Explore the relationship between GDP per capita "
-        "and life expectancy."
+        """
+        Explore the relationship between GDP per capita
+        and life expectancy.
+        """
     )
 
-    # ----------------------------------------------
-    # CLEAN DATA
-    # ----------------------------------------------
-
-    gdp_df = gdp_df.rename(
-        columns={
-            "Entity": "Country",
-            "Life expectancy": "Life Expectancy",
-            "GDP per capita": "GDP per Capita"
-        }
-    )
-
-    # ----------------------------------------------
-    # FIND GDP COLUMN
-    # ----------------------------------------------
-
-    gdp_columns = gdp_df.columns.tolist()
-
-    possible_gdp_columns = [
-        "GDP per Capita",
-        "GDP per capita",
-        "GDP per capita, PPP",
-        "GDP per capita (int. $)"
-    ]
-
-    gdp_column = None
-
-    for column in possible_gdp_columns:
-
-        if column in gdp_columns:
-            gdp_column = column
-            break
+    # -----------------------------------------------------
+    # CHECK GDP COLUMN
+    # -----------------------------------------------------
 
     if gdp_column is None:
 
         st.error(
-            "GDP column was not found in the CSV file."
+            "The GDP per capita column could not be found."
         )
 
         st.write(
-            "Columns found:",
-            gdp_columns
+            "Columns found in the dataset:"
         )
+
+        st.write(gdp_df.columns.tolist())
 
         st.stop()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # YEAR FILTER
-    # ----------------------------------------------
+    # -----------------------------------------------------
+
+    st.sidebar.subheader("GDP Filters")
 
     min_year = int(gdp_df["Year"].min())
     max_year = int(gdp_df["Year"].max())
@@ -332,16 +372,17 @@ elif page == "Life Expectancy vs GDP":
         "Select Year",
         min_year,
         max_year,
-        max_year
+        max_year,
+        key="gdp_year"
     )
 
     gdp_year = gdp_df[
         gdp_df["Year"] == selected_year
     ].copy()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # METRICS
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     col1, col2, col3 = st.columns(3)
 
@@ -376,15 +417,15 @@ elif page == "Life Expectancy vs GDP":
 
     st.divider()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # SCATTER PLOT
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     st.subheader(
         f"GDP per Capita vs Life Expectancy — {selected_year}"
     )
 
-    gdp_year = gdp_year.dropna(
+    gdp_plot = gdp_year.dropna(
         subset=[
             gdp_column,
             "Life Expectancy"
@@ -392,12 +433,10 @@ elif page == "Life Expectancy vs GDP":
     )
 
     fig = px.scatter(
-        gdp_year,
+        gdp_plot,
         x=gdp_column,
         y="Life Expectancy",
         hover_name="Country",
-        size="Life Expectancy",
-        log_x=True,
         title="GDP per Capita and Life Expectancy",
         labels={
             gdp_column:
@@ -412,21 +451,24 @@ elif page == "Life Expectancy vs GDP":
         use_container_width=True
     )
 
-    # ----------------------------------------------
-    # COUNTRY SELECTION
-    # ----------------------------------------------
+    # -----------------------------------------------------
+    # COUNTRY COMPARISON
+    # -----------------------------------------------------
 
     st.subheader("🔎 Country Comparison")
 
     selected_countries = st.multiselect(
-        "Select countries",
-        sorted(gdp_year["Country"].unique())
+        "Select countries to compare",
+        sorted(
+            gdp_plot["Country"].unique()
+        ),
+        key="gdp_countries"
     )
 
     if selected_countries:
 
-        comparison = gdp_year[
-            gdp_year["Country"].isin(
+        comparison = gdp_plot[
+            gdp_plot["Country"].isin(
                 selected_countries
             )
         ]
@@ -445,54 +487,48 @@ elif page == "Life Expectancy vs GDP":
         )
 
 
-# ==================================================
+# =========================================================
 # PAGE 3 — LIFE EXPECTANCY VS HEALTH EXPENDITURE
-# ==================================================
+# =========================================================
 
-elif page == "Life Expectancy vs Health Expenditure":
+elif page == "🏥 Life Expectancy vs Health Expenditure":
 
     st.header(
-        "🏥 Life Expectancy vs Health Expenditure"
+        "Life Expectancy vs Health Expenditure"
     )
 
     st.write(
-        "Explore whether countries that spend more "
-        "on health care tend to have higher life expectancy."
+        """
+        Explore the relationship between health expenditure
+        per capita and life expectancy.
+        """
     )
 
-    # ----------------------------------------------
-    # CLEAN DATA
-    # ----------------------------------------------
-
-    health_df = health_df.rename(
-        columns={
-            "Entity": "Country",
-            "Life expectancy": "Life Expectancy",
-            "Health expenditure per capita":
-                "Health Expenditure"
-        }
-    )
-
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # CHECK HEALTH COLUMN
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     if "Health Expenditure" not in health_df.columns:
 
         st.error(
-            "Health expenditure column was not found."
+            "The health expenditure column could not be found."
         )
 
         st.write(
-            "Columns found:",
+            "Columns found in the dataset:"
+        )
+
+        st.write(
             health_df.columns.tolist()
         )
 
         st.stop()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # YEAR FILTER
-    # ----------------------------------------------
+    # -----------------------------------------------------
+
+    st.sidebar.subheader("Health Filters")
 
     min_year = int(health_df["Year"].min())
     max_year = int(health_df["Year"].max())
@@ -501,16 +537,17 @@ elif page == "Life Expectancy vs Health Expenditure":
         "Select Year",
         min_year,
         max_year,
-        max_year
+        max_year,
+        key="health_year"
     )
 
     health_year = health_df[
         health_df["Year"] == selected_year
     ].copy()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # METRICS
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     col1, col2, col3 = st.columns(3)
 
@@ -545,15 +582,15 @@ elif page == "Life Expectancy vs Health Expenditure":
 
     st.divider()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # SCATTER PLOT
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     st.subheader(
         f"Health Expenditure vs Life Expectancy — {selected_year}"
     )
 
-    health_year = health_year.dropna(
+    health_plot = health_year.dropna(
         subset=[
             "Health Expenditure",
             "Life Expectancy"
@@ -561,11 +598,10 @@ elif page == "Life Expectancy vs Health Expenditure":
     )
 
     fig = px.scatter(
-        health_year,
+        health_plot,
         x="Health Expenditure",
         y="Life Expectancy",
         hover_name="Country",
-        size="Life Expectancy",
         title="Health Expenditure and Life Expectancy",
         labels={
             "Health Expenditure":
@@ -580,23 +616,24 @@ elif page == "Life Expectancy vs Health Expenditure":
         use_container_width=True
     )
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # COUNTRY COMPARISON
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     st.subheader("🔎 Country Comparison")
 
     selected_countries = st.multiselect(
-        "Select countries",
+        "Select countries to compare",
         sorted(
-            health_year["Country"].unique()
-        )
+            health_plot["Country"].unique()
+        ),
+        key="health_countries"
     )
 
     if selected_countries:
 
-        comparison = health_year[
-            health_year["Country"].isin(
+        comparison = health_plot[
+            health_plot["Country"].isin(
                 selected_countries
             )
         ]
@@ -614,12 +651,35 @@ elif page == "Life Expectancy vs Health Expenditure":
             hide_index=True
         )
 
-# --------------------------------------------------
-# FOOTER
-# --------------------------------------------------
+
+# =========================================================
+# DATA SOURCES
+# =========================================================
 
 st.divider()
 
+st.subheader("📚 Data Sources")
+
+st.markdown(
+    "[Life Expectancy Dataset]"
+    "(https://github.com/veronikayushchak-coder/"
+    "dsc205-streamlit/blob/main/life-expectancy.csv)"
+)
+
+st.markdown(
+    "[Life Expectancy vs GDP per Capita Dataset]"
+    "(https://github.com/veronikayushchak-coder/"
+    "dsc205-streamlit/blob/main/"
+    "life-expectancy-vs-gdp-per-capita.csv)"
+)
+
+st.markdown(
+    "[Life Expectancy vs Health Expenditure Dataset]"
+    "(https://github.com/veronikayushchak-coder/"
+    "dsc205-streamlit/blob/main/"
+    "life-expectancy-vs-health-expenditure.csv)"
+)
+
 st.caption(
-    "Source: Our World in Data (OWID)"
+    "Data source: Our World in Data (OWID)."
 )
