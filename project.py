@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --------------------------------------------------
+
+# =========================================================
 # PAGE SETUP
-# --------------------------------------------------
+# =========================================================
 
 st.set_page_config(
     page_title="Life Expectancy",
@@ -12,19 +13,51 @@ st.set_page_config(
     layout="wide"
 )
 
-# --------------------------------------------------
-# LOAD DATA FROM GITHUB
-# --------------------------------------------------
 
-url = (
+# =========================================================
+# DATA URLS
+# =========================================================
+
+LIFE_URL = (
     "https://raw.githubusercontent.com/"
     "veronikayushchak-coder/dsc205-streamlit/"
     "main/life-expectancy.csv"
 )
 
-df = pd.read_csv(url)
+GDP_URL = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy-vs-gdp-per-capita.csv"
+)
 
-# Rename columns
+HEALTH_URL = (
+    "https://raw.githubusercontent.com/"
+    "veronikayushchak-coder/dsc205-streamlit/"
+    "main/life-expectancy-vs-health-expenditure.csv"
+)
+
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+
+@st.cache_data
+def load_data():
+
+    life_df = pd.read_csv(LIFE_URL)
+    gdp_df = pd.read_csv(GDP_URL)
+    health_df = pd.read_csv(HEALTH_URL)
+
+    return life_df, gdp_df, health_df
+
+
+df, gdp_df, health_df = load_data()
+
+
+# =========================================================
+# CLEAN COLUMN NAMES
+# =========================================================
+
 df = df.rename(
     columns={
         "Entity": "Country",
@@ -32,220 +65,12 @@ df = df.rename(
     }
 )
 
-# --------------------------------------------------
-# TITLE
-# --------------------------------------------------
-
-st.title("🌍 Life Expectancy Around the World")
-
-st.write(
-    "Use the year selector to explore life expectancy "
-    "across countries around the world."
-)
-
-# --------------------------------------------------
-# YEAR SELECTOR
-# --------------------------------------------------
-
-years = sorted(df["Year"].dropna().unique())
-
-selected_year = st.select_slider(
-    "Select Year",
-    options=years,
-    value=years[-1]
-)
-
-# --------------------------------------------------
-# FILTER DATA
-# --------------------------------------------------
-
-year_data = df[
-    df["Year"] == selected_year
-].copy()
-
-# --------------------------------------------------
-# WORLD MAP
-# --------------------------------------------------
-
-fig = px.choropleth(
-    year_data,
-    locations="Code",
-    color="Life Expectancy",
-    hover_name="Country",
-    color_continuous_scale="YlGnBu",
-    projection="natural earth",
-    title=f"Life Expectancy by Country — {selected_year}",
-    labels={
-        "Life Expectancy": "Life Expectancy (years)"
-    }
-)
-
-fig.update_layout(
-    margin=dict(
-        l=0,
-        r=0,
-        t=60,
-        b=0
-    )
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-# --------------------------------------------------
-# SELECTED YEAR INFORMATION
-# --------------------------------------------------
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(
-        "Year",
-        selected_year
-    )
-
-with col2:
-    st.metric(
-        "Average Life Expectancy",
-        f"{year_data['Life Expectancy'].mean():.1f} years"
-    )
-
-with col3:
-    st.metric(
-        "Countries",
-        year_data["Country"].nunique()
-    )
-
-# --------------------------------------------------
-# DATA SOURCE
-# --------------------------------------------------
-
-st.divider()
-
-st.subheader("📚 Data Source")
-
-st.markdown(
-    "[Life Expectancy Dataset on GitHub]"
-    "(https://github.com/veronikayushchak-coder/"
-    "dsc205-streamlit/blob/main/life-expectancy.csv)"
-)
-
-# --------------------------------------------------
-# LIFE EXPECTANCY OVER TIME
-# --------------------------------------------------
-
-st.divider()
-
-st.header("📈 Life Expectancy Over Time")
-
-st.write(
-    "Select a country to see how its life expectancy "
-    "has changed over the years."
-)
-
-# Country selector
-country_list = sorted(
-    df["Country"].dropna().unique()
-)
-
-selected_country = st.selectbox(
-    "Select a country",
-    country_list
-)
-
-# Filter for selected country
-country_data = df[
-    df["Country"] == selected_country
-].sort_values("Year")
-
-# Create line chart
-fig = px.line(
-    country_data,
-    x="Year",
-    y="Life Expectancy",
-    markers=True,
-    title=f"Life Expectancy in {selected_country}",
-    labels={
-        "Year": "Year",
-        "Life Expectancy": "Life Expectancy (years)"
-    }
-)
-
-fig.update_layout(
-    margin=dict(
-        l=0,
-        r=0,
-        t=60,
-        b=0
-    )
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-# ==================================================
-# LIFE EXPECTANCY COMPARED WITH OTHER FACTORS
-# ==================================================
-
-st.divider()
-
-st.header("📊 Life Expectancy Compared with Other Factors")
-
-st.write(
-    "Choose a year and country to explore the relationship "
-    "between life expectancy, health spending, GDP, and population."
-)
-
-# --------------------------------------------------
-# LOAD GDP DATA
-# --------------------------------------------------
-
-gdp_url = (
-    "https://raw.githubusercontent.com/"
-    "veronikayushchak-coder/dsc205-streamlit/"
-    "main/life-expectancy-vs-gdp-per-capita.csv"
-)
-
-gdp_df = pd.read_csv(gdp_url)
-
 gdp_df = gdp_df.rename(
     columns={
         "Entity": "Country",
         "Life expectancy": "Life Expectancy"
     }
 )
-
-# Find GDP column
-possible_gdp_columns = [
-    "GDP per capita",
-    "GDP per Capita",
-    "GDP per capita, PPP",
-    "GDP per capita (int. $)"
-]
-
-gdp_column = None
-
-for column in possible_gdp_columns:
-    if column in gdp_df.columns:
-        gdp_column = column
-        break
-
-
-# --------------------------------------------------
-# LOAD HEALTH DATA
-# --------------------------------------------------
-
-health_url = (
-    "https://raw.githubusercontent.com/"
-    "veronikayushchak-coder/dsc205-streamlit/"
-    "main/life-expectancy-vs-health-expenditure.csv"
-)
-
-health_df = pd.read_csv(health_url)
 
 health_df = health_df.rename(
     columns={
@@ -257,79 +82,306 @@ health_df = health_df.rename(
 )
 
 
-# --------------------------------------------------
-# FIND POPULATION COLUMN
-# --------------------------------------------------
+# =========================================================
+# FIND GDP COLUMN
+# =========================================================
 
-population_column = None
+possible_gdp_columns = [
+    "GDP per capita",
+    "GDP per Capita",
+    "GDP per capita, PPP",
+    "GDP per capita (int. $)"
+]
+
+gdp_column = None
+
+for column in possible_gdp_columns:
+
+    if column in gdp_df.columns:
+        gdp_column = column
+        break
+
+
+# =========================================================
+# FIND POPULATION COLUMN
+# =========================================================
 
 possible_population_columns = [
     "Population",
     "population",
-    "Population (historical)"
+    "Population (historical)",
+    "Population - Sex: all - Age: all - Variant: estimates"
 ]
 
+population_column = None
+
 for column in possible_population_columns:
+
     if column in df.columns:
         population_column = column
         break
 
 
-# ==================================================
-# FILTERS
-# ==================================================
+# =========================================================
+# TITLE
+# =========================================================
 
-st.subheader("🔎 Select Data")
+st.title("🌍 Life Expectancy Around the World")
 
-col1, col2 = st.columns(2)
+st.write(
+    """
+    Explore how life expectancy has changed across countries
+    and examine its relationship with GDP, health spending,
+    and population.
+    """
+)
 
-# --------------------------------------------------
-# YEAR SELECTOR
-# --------------------------------------------------
+
+# =========================================================
+# SECTION 1 — WORLD MAP
+# =========================================================
+
+st.header("🌎 Life Expectancy by Country")
+
+st.write(
+    "Select a year to see life expectancy around the world."
+)
+
+
+# ---------------------------------------------------------
+# MAP YEAR SELECTOR
+# ---------------------------------------------------------
+
+map_years = sorted(
+    df["Year"].dropna().unique()
+)
+
+map_year = st.select_slider(
+    "Select Year",
+    options=map_years,
+    value=map_years[-1],
+    key="map_year"
+)
+
+
+# ---------------------------------------------------------
+# MAP DATA
+# ---------------------------------------------------------
+
+map_data = df[
+    df["Year"] == map_year
+].copy()
+
+
+# ---------------------------------------------------------
+# WORLD MAP
+# ---------------------------------------------------------
+
+fig_map = px.choropleth(
+    map_data,
+    locations="Code",
+    color="Life Expectancy",
+    hover_name="Country",
+    color_continuous_scale="YlGnBu",
+    projection="natural earth",
+    title=f"Life Expectancy — {map_year}",
+    labels={
+        "Life Expectancy":
+            "Life Expectancy (years)"
+    }
+)
+
+fig_map.update_layout(
+    margin=dict(
+        l=0,
+        r=0,
+        t=60,
+        b=0
+    )
+)
+
+st.plotly_chart(
+    fig_map,
+    use_container_width=True
+)
+
+
+# ---------------------------------------------------------
+# MAP METRICS
+# ---------------------------------------------------------
+
+col1, col2, col3 = st.columns(3)
 
 with col1:
 
-    available_years = sorted(
-        df["Year"].dropna().unique()
+    st.metric(
+        "Year",
+        map_year
     )
-
-    selected_year = st.selectbox(
-        "Select Year",
-        available_years,
-        index=len(available_years) - 1,
-        key="comparison_year"
-    )
-
-
-# --------------------------------------------------
-# COUNTRY SELECTOR
-# --------------------------------------------------
 
 with col2:
 
-    available_countries = sorted(
-        df["Country"].dropna().unique()
+    average_life = map_data[
+        "Life Expectancy"
+    ].mean()
+
+    st.metric(
+        "Average Life Expectancy",
+        f"{average_life:.1f} years"
     )
 
-    selected_country = st.selectbox(
-        "Select Country",
-        available_countries,
-        key="comparison_country"
+with col3:
+
+    st.metric(
+        "Countries",
+        map_data["Country"].nunique()
     )
 
 
-# ==================================================
+# =========================================================
+# SECTION 2 — LIFE EXPECTANCY OVER TIME
+# =========================================================
+
+st.divider()
+
+st.header("📈 Life Expectancy Over Time")
+
+st.write(
+    "Select a country to see how its life expectancy "
+    "has changed over time."
+)
+
+
+# ---------------------------------------------------------
+# COUNTRY SELECTOR
+# ---------------------------------------------------------
+
+all_countries = sorted(
+    df["Country"].dropna().unique()
+)
+
+selected_country_trend = st.selectbox(
+    "Select Country",
+    all_countries,
+    key="trend_country"
+)
+
+
+# ---------------------------------------------------------
+# COUNTRY DATA
+# ---------------------------------------------------------
+
+country_trend = df[
+    df["Country"] == selected_country_trend
+].sort_values("Year")
+
+
+# ---------------------------------------------------------
+# LINE CHART
+# ---------------------------------------------------------
+
+fig_trend = px.line(
+    country_trend,
+    x="Year",
+    y="Life Expectancy",
+    markers=True,
+    title=(
+        f"Life Expectancy in "
+        f"{selected_country_trend}"
+    ),
+    labels={
+        "Year": "Year",
+        "Life Expectancy":
+            "Life Expectancy (years)"
+    }
+)
+
+fig_trend.update_layout(
+    margin=dict(
+        l=0,
+        r=0,
+        t=60,
+        b=0
+    )
+)
+
+st.plotly_chart(
+    fig_trend,
+    use_container_width=True
+)
+
+
+# =========================================================
+# SECTION 3 — COMPARISONS
+# =========================================================
+
+st.divider()
+
+st.header(
+    "📊 Life Expectancy Compared with Other Factors"
+)
+
+st.write(
+    """
+    Select a year and country to explore life expectancy
+    compared with health spending, GDP per capita, and population.
+    """
+)
+
+
+# ---------------------------------------------------------
+# YEAR SELECTOR
+# ---------------------------------------------------------
+
+comparison_years = sorted(
+    df["Year"].dropna().unique()
+)
+
+comparison_year = st.selectbox(
+    "Select Year",
+    comparison_years,
+    index=len(comparison_years) - 1,
+    key="comparison_year"
+)
+
+
+# ---------------------------------------------------------
+# COUNTRY LIST BASED ON SELECTED YEAR
+# ---------------------------------------------------------
+
+countries_for_year = sorted(
+    df[
+        df["Year"] == comparison_year
+    ]["Country"]
+    .dropna()
+    .unique()
+)
+
+
+# ---------------------------------------------------------
+# COUNTRY SELECTOR
+# ---------------------------------------------------------
+
+selected_country = st.selectbox(
+    "Select Country",
+    countries_for_year,
+    key="comparison_country"
+)
+
+
+# =========================================================
 # SELECTED COUNTRY LIFE EXPECTANCY
-# ==================================================
+# =========================================================
 
-country_life = df[
+selected_life = df[
     (df["Country"] == selected_country) &
-    (df["Year"] == selected_year)
+    (df["Year"] == comparison_year)
 ]
 
-if not country_life.empty:
 
-    life_value = country_life[
+if not selected_life.empty:
+
+    life_value = selected_life[
         "Life Expectancy"
     ].iloc[0]
 
@@ -338,24 +390,21 @@ if not country_life.empty:
         f"{life_value:.1f} years"
     )
 
-else:
 
-    st.warning(
-        "Life expectancy data is not available "
-        "for this country and year."
-    )
-
-
-# ==================================================
+# =========================================================
 # 1. HEALTH SPENDING
-# ==================================================
+# =========================================================
 
-st.subheader("🏥 Life Expectancy vs Health Spending")
+st.subheader(
+    "🏥 Life Expectancy vs Health Spending"
+)
+
 
 health_selected = health_df[
     (health_df["Country"] == selected_country) &
-    (health_df["Year"] == selected_year)
+    (health_df["Year"] == comparison_year)
 ].copy()
+
 
 if not health_selected.empty:
 
@@ -366,55 +415,53 @@ if not health_selected.empty:
         ]
     )
 
-    if not health_selected.empty:
 
-        fig_health = px.scatter(
-            health_selected,
-            x="Health Expenditure",
-            y="Life Expectancy",
-            hover_name="Country",
-            title=(
-                f"{selected_country} — "
-                f"Health Spending vs Life Expectancy"
-            ),
-            labels={
-                "Health Expenditure":
-                    "Health Spending per Capita",
-                "Life Expectancy":
-                    "Life Expectancy (years)"
-            }
-        )
+if not health_selected.empty:
 
-        st.plotly_chart(
-            fig_health,
-            use_container_width=True
-        )
+    fig_health = px.scatter(
+        health_selected,
+        x="Health Expenditure",
+        y="Life Expectancy",
+        hover_name="Country",
+        title=(
+            f"{selected_country}: "
+            f"Health Spending vs Life Expectancy"
+        ),
+        labels={
+            "Health Expenditure":
+                "Health Spending per Capita",
+            "Life Expectancy":
+                "Life Expectancy (years)"
+        }
+    )
 
-    else:
-
-        st.info(
-            "No health expenditure data available."
-        )
+    st.plotly_chart(
+        fig_health,
+        use_container_width=True
+    )
 
 else:
 
     st.info(
-        "No health expenditure data available "
+        "Health expenditure data is not available "
         "for this country and year."
     )
 
 
-# ==================================================
+# =========================================================
 # 2. GDP
-# ==================================================
+# =========================================================
 
-st.subheader("💰 Life Expectancy vs GDP per Capita")
+st.subheader(
+    "💰 Life Expectancy vs GDP per Capita"
+)
+
 
 if gdp_column is not None:
 
     gdp_selected = gdp_df[
         (gdp_df["Country"] == selected_country) &
-        (gdp_df["Year"] == selected_year)
+        (gdp_df["Year"] == comparison_year)
     ].copy()
 
     gdp_selected = gdp_selected.dropna(
@@ -424,6 +471,7 @@ if gdp_column is not None:
         ]
     )
 
+
     if not gdp_selected.empty:
 
         fig_gdp = px.scatter(
@@ -432,7 +480,7 @@ if gdp_column is not None:
             y="Life Expectancy",
             hover_name="Country",
             title=(
-                f"{selected_country} — "
+                f"{selected_country}: "
                 f"GDP vs Life Expectancy"
             ),
             labels={
@@ -451,8 +499,8 @@ if gdp_column is not None:
     else:
 
         st.info(
-            "No GDP data available for "
-            "this country and year."
+            "GDP data is not available "
+            "for this country and year."
         )
 
 else:
@@ -462,17 +510,20 @@ else:
     )
 
 
-# ==================================================
+# =========================================================
 # 3. POPULATION
-# ==================================================
+# =========================================================
 
-st.subheader("👥 Life Expectancy vs Population")
+st.subheader(
+    "👥 Life Expectancy vs Population"
+)
+
 
 if population_column is not None:
 
     population_selected = df[
         (df["Country"] == selected_country) &
-        (df["Year"] == selected_year)
+        (df["Year"] == comparison_year)
     ].copy()
 
     population_selected = population_selected.dropna(
@@ -482,6 +533,7 @@ if population_column is not None:
         ]
     )
 
+
     if not population_selected.empty:
 
         fig_population = px.scatter(
@@ -490,7 +542,7 @@ if population_column is not None:
             y="Life Expectancy",
             hover_name="Country",
             title=(
-                f"{selected_country} — "
+                f"{selected_country}: "
                 f"Population vs Life Expectancy"
             ),
             labels={
@@ -510,12 +562,46 @@ if population_column is not None:
     else:
 
         st.info(
-            "No population data available."
+            "Population data is not available "
+            "for this country and year."
         )
 
 else:
 
-    st.warning(
+    st.info(
         "Population data is not included in "
-        "life-expectancy.csv."
+        "your life-expectancy.csv file."
     )
+
+
+# =========================================================
+# DATA SOURCES
+# =========================================================
+
+st.divider()
+
+st.subheader("📚 Data Sources")
+
+st.markdown(
+    "[Life Expectancy Dataset]"
+    "(https://github.com/veronikayushchak-coder/"
+    "dsc205-streamlit/blob/main/life-expectancy.csv)"
+)
+
+st.markdown(
+    "[Life Expectancy vs GDP per Capita Dataset]"
+    "(https://github.com/veronikayushchak-coder/"
+    "dsc205-streamlit/blob/main/"
+    "life-expectancy-vs-gdp-per-capita.csv)"
+)
+
+st.markdown(
+    "[Life Expectancy vs Health Expenditure Dataset]"
+    "(https://github.com/veronikayushchak-coder/"
+    "dsc205-streamlit/blob/main/"
+    "life-expectancy-vs-health-expenditure.csv)"
+)
+
+st.caption(
+    "Data source: Our World in Data (OWID)."
+)
