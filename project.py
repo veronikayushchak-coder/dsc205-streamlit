@@ -8,7 +8,7 @@ import plotly.express as px
 # =========================================================
 
 st.set_page_config(
-    page_title="Life Expectancy",
+    page_title="Life Expectancy Analysis",
     page_icon="🌍",
     layout="wide"
 )
@@ -126,13 +126,12 @@ for column in possible_population_columns:
 # TITLE
 # =========================================================
 
-st.title("🌍 Life Expectancy Around the World")
+st.title("🌍 Life Expectancy Analysis")
 
 st.write(
     """
-    Explore how life expectancy has changed across countries
-    and examine its relationship with GDP, health spending,
-    and population.
+    Explore life expectancy around the world and examine
+    how it relates to GDP, health spending, and population.
     """
 )
 
@@ -144,12 +143,12 @@ st.write(
 st.header("🌎 Life Expectancy by Country")
 
 st.write(
-    "Select a year to see life expectancy around the world."
+    "Select a year to see life expectancy across the world."
 )
 
 
 # ---------------------------------------------------------
-# MAP YEAR SELECTOR
+# MAP YEAR
 # ---------------------------------------------------------
 
 map_years = sorted(
@@ -207,7 +206,7 @@ st.plotly_chart(
 
 
 # ---------------------------------------------------------
-# MAP METRICS
+# MAP SUMMARY
 # ---------------------------------------------------------
 
 col1, col2, col3 = st.columns(3)
@@ -260,7 +259,7 @@ all_countries = sorted(
     df["Country"].dropna().unique()
 )
 
-selected_country_trend = st.selectbox(
+trend_country = st.selectbox(
     "Select Country",
     all_countries,
     key="trend_country"
@@ -272,7 +271,7 @@ selected_country_trend = st.selectbox(
 # ---------------------------------------------------------
 
 country_trend = df[
-    df["Country"] == selected_country_trend
+    df["Country"] == trend_country
 ].sort_values("Year")
 
 
@@ -285,10 +284,7 @@ fig_trend = px.line(
     x="Year",
     y="Life Expectancy",
     markers=True,
-    title=(
-        f"Life Expectancy in "
-        f"{selected_country_trend}"
-    ),
+    title=f"Life Expectancy in {trend_country}",
     labels={
         "Year": "Year",
         "Life Expectancy":
@@ -329,9 +325,9 @@ st.write(
 )
 
 
-# ---------------------------------------------------------
-# YEAR SELECTOR
-# ---------------------------------------------------------
+# =========================================================
+# SELECT YEAR FIRST
+# =========================================================
 
 comparison_years = sorted(
     df["Year"].dropna().unique()
@@ -345,28 +341,68 @@ comparison_year = st.selectbox(
 )
 
 
-# ---------------------------------------------------------
-# COUNTRY LIST BASED ON SELECTED YEAR
-# ---------------------------------------------------------
+# =========================================================
+# FIND COUNTRIES AVAILABLE FOR SELECTED YEAR
+# =========================================================
 
-countries_for_year = sorted(
-    df[
-        df["Year"] == comparison_year
-    ]["Country"]
+# Life expectancy countries
+life_countries = set(
+    df.loc[
+        df["Year"] == comparison_year,
+        "Country"
+    ]
     .dropna()
-    .unique()
 )
 
 
-# ---------------------------------------------------------
+# GDP countries
+gdp_countries = set(
+    gdp_df.loc[
+        gdp_df["Year"] == comparison_year,
+        "Country"
+    ]
+    .dropna()
+)
+
+
+# Health expenditure countries
+health_countries = set(
+    health_df.loc[
+        health_df["Year"] == comparison_year,
+        "Country"
+    ]
+    .dropna()
+)
+
+
+# Countries available in all three datasets
+countries_for_year = sorted(
+    life_countries
+    & gdp_countries
+    & health_countries
+)
+
+
+# =========================================================
 # COUNTRY SELECTOR
-# ---------------------------------------------------------
+# =========================================================
 
-selected_country = st.selectbox(
-    "Select Country",
-    countries_for_year,
-    key="comparison_country"
-)
+if countries_for_year:
+
+    selected_country = st.selectbox(
+        "Select Country",
+        countries_for_year,
+        key="comparison_country"
+    )
+
+else:
+
+    st.warning(
+        f"No countries have data available in all "
+        f"three datasets for {comparison_year}."
+    )
+
+    st.stop()
 
 
 # =========================================================
@@ -374,8 +410,8 @@ selected_country = st.selectbox(
 # =========================================================
 
 selected_life = df[
-    (df["Country"] == selected_country) &
-    (df["Year"] == comparison_year)
+    (df["Country"] == selected_country)
+    & (df["Year"] == comparison_year)
 ]
 
 
@@ -392,7 +428,7 @@ if not selected_life.empty:
 
 
 # =========================================================
-# 1. HEALTH SPENDING
+# HEALTH SPENDING
 # =========================================================
 
 st.subheader(
@@ -401,19 +437,17 @@ st.subheader(
 
 
 health_selected = health_df[
-    (health_df["Country"] == selected_country) &
-    (health_df["Year"] == comparison_year)
+    (health_df["Country"] == selected_country)
+    & (health_df["Year"] == comparison_year)
 ].copy()
 
 
-if not health_selected.empty:
-
-    health_selected = health_selected.dropna(
-        subset=[
-            "Health Expenditure",
-            "Life Expectancy"
-        ]
-    )
+health_selected = health_selected.dropna(
+    subset=[
+        "Health Expenditure",
+        "Life Expectancy"
+    ]
+)
 
 
 if not health_selected.empty:
@@ -449,7 +483,7 @@ else:
 
 
 # =========================================================
-# 2. GDP
+# GDP
 # =========================================================
 
 st.subheader(
@@ -460,8 +494,8 @@ st.subheader(
 if gdp_column is not None:
 
     gdp_selected = gdp_df[
-        (gdp_df["Country"] == selected_country) &
-        (gdp_df["Year"] == comparison_year)
+        (gdp_df["Country"] == selected_country)
+        & (gdp_df["Year"] == comparison_year)
     ].copy()
 
     gdp_selected = gdp_selected.dropna(
@@ -511,7 +545,7 @@ else:
 
 
 # =========================================================
-# 3. POPULATION
+# POPULATION
 # =========================================================
 
 st.subheader(
@@ -522,8 +556,8 @@ st.subheader(
 if population_column is not None:
 
     population_selected = df[
-        (df["Country"] == selected_country) &
-        (df["Year"] == comparison_year)
+        (df["Country"] == selected_country)
+        & (df["Year"] == comparison_year)
     ].copy()
 
     population_selected = population_selected.dropna(
@@ -550,8 +584,7 @@ if population_column is not None:
                     "Population",
                 "Life Expectancy":
                     "Life Expectancy (years)"
-            },
-            log_x=True
+            }
         )
 
         st.plotly_chart(
@@ -570,7 +603,7 @@ else:
 
     st.info(
         "Population data is not included in "
-        "your life-expectancy.csv file."
+        "life-expectancy.csv."
     )
 
 
