@@ -271,7 +271,7 @@ st.write(
 
 
 # =========================================================
-# CHOOSE WHAT TO COMPARE FIRST
+# CHOOSE WHAT TO COMPARE
 # =========================================================
 
 comparison_choice = st.radio(
@@ -279,8 +279,7 @@ comparison_choice = st.radio(
     [
         "Life Expectancy",
         "Health Spending",
-        "GDP per Capita",
-        "Population"
+        "GDP per Capita"
     ],
     horizontal=True,
     key="comparison_choice"
@@ -305,18 +304,11 @@ elif comparison_choice == "Health Spending":
     value_column = "Health Expenditure"
 
 
-elif comparison_choice == "GDP per Capita":
+else:
 
     comparison_df = gdp_df.copy()
 
     value_column = gdp_column
-
-
-else:
-
-    comparison_df = df.copy()
-
-    value_column = population_column
 
 
 # =========================================================
@@ -334,7 +326,7 @@ if value_column is None:
 
 
 # =========================================================
-# FIND YEARS WITH DATA
+# FIND AVAILABLE YEARS
 # =========================================================
 
 years_available = sorted(
@@ -346,9 +338,265 @@ years_available = sorted(
 )
 
 
+if len(years_available) == 0:
+
+    st.warning(
+        f"No years with {comparison_choice.lower()} "
+        "data were found."
+    )
+
+    st.stop()
+
+
 # =========================================================
 # YEAR SELECTOR
 # =========================================================
+
+comparison_year = st.selectbox(
+    "Select Year",
+    years_available,
+    index=len(years_available) - 1,
+    key="comparison_year"
+)
+
+
+# =========================================================
+# FIND COUNTRIES WITH DATA FOR SELECTED YEAR
+# =========================================================
+
+available_data = comparison_df[
+    comparison_df["Year"] == comparison_year
+].copy()
+
+
+available_data = available_data.dropna(
+    subset=[
+        "Country",
+        value_column
+    ]
+)
+
+
+available_countries = sorted(
+    available_data["Country"].unique()
+)
+
+
+# =========================================================
+# CHECK COUNTRIES
+# =========================================================
+
+if len(available_countries) < 3:
+
+    st.warning(
+        f"Fewer than 3 countries have "
+        f"{comparison_choice.lower()} data "
+        f"for {comparison_year}."
+    )
+
+    st.stop()
+
+
+# =========================================================
+# SELECT THREE COUNTRIES
+# =========================================================
+
+st.subheader("🌎 Select Three Countries")
+
+
+country_col1, country_col2, country_col3 = st.columns(3)
+
+
+with country_col1:
+
+    country_1 = st.selectbox(
+        "Country 1",
+        available_countries,
+        index=0,
+        key="compare_country_1"
+    )
+
+
+with country_col2:
+
+    country_2_options = [
+        country
+        for country in available_countries
+        if country != country_1
+    ]
+
+    country_2 = st.selectbox(
+        "Country 2",
+        country_2_options,
+        index=0,
+        key="compare_country_2"
+    )
+
+
+with country_col3:
+
+    country_3_options = [
+        country
+        for country in available_countries
+        if country not in [
+            country_1,
+            country_2
+        ]
+    ]
+
+    country_3 = st.selectbox(
+        "Country 3",
+        country_3_options,
+        index=0,
+        key="compare_country_3"
+    )
+
+
+# =========================================================
+# CREATE COMPARISON DATA
+# =========================================================
+
+selected_countries = [
+    country_1,
+    country_2,
+    country_3
+]
+
+
+chart_data = available_data[
+    available_data["Country"].isin(
+        selected_countries
+    )
+][
+    [
+        "Country",
+        value_column
+    ]
+].copy()
+
+
+# =========================================================
+# BAR CHART
+# =========================================================
+
+st.subheader(
+    f"{comparison_choice} Comparison"
+)
+
+
+fig_comparison = px.bar(
+    chart_data,
+    x="Country",
+    y=value_column,
+    title=(
+        f"{comparison_choice} — "
+        f"{comparison_year}"
+    ),
+    labels={
+        value_column: comparison_choice
+    },
+    text=value_column
+)
+
+fig_comparison.update_traces(
+    textposition="outside"
+)
+
+fig_comparison.update_layout(
+    margin=dict(
+        l=0,
+        r=0,
+        t=60,
+        b=0
+    )
+)
+
+st.plotly_chart(
+    fig_comparison,
+    use_container_width=True
+)
+
+# =========================================================
+# SECTION 3 — COMPARE COUNTRIES
+# =========================================================
+
+st.divider()
+
+st.header("📊 Compare Countries")
+
+st.write(
+    "Choose a factor first, then select a year and "
+    "three countries to compare."
+)
+
+
+# =========================================================
+# CHOOSE WHAT TO COMPARE
+# =========================================================
+
+comparison_choice = st.radio(
+    "What would you like to compare?",
+    [
+        "Life Expectancy",
+        "Health Spending",
+        "GDP per Capita"
+    ],
+    horizontal=True,
+    key="comparison_choice"
+)
+
+
+# =========================================================
+# DETERMINE DATASET AND VALUE COLUMN
+# =========================================================
+
+if comparison_choice == "Life Expectancy":
+
+    comparison_df = df.copy()
+
+    value_column = "Life Expectancy"
+
+
+elif comparison_choice == "Health Spending":
+
+    comparison_df = health_df.copy()
+
+    value_column = "Health Expenditure"
+
+
+else:
+
+    comparison_df = gdp_df.copy()
+
+    value_column = gdp_column
+
+
+# =========================================================
+# CHECK IF DATA EXISTS
+# =========================================================
+
+if value_column is None:
+
+    st.warning(
+        f"{comparison_choice} data is not available "
+        "in the dataset."
+    )
+
+    st.stop()
+
+
+# =========================================================
+# FIND AVAILABLE YEARS
+# =========================================================
+
+years_available = sorted(
+    comparison_df[
+        comparison_df[value_column].notna()
+    ]["Year"]
+    .dropna()
+    .unique()
+)
+
 
 if len(years_available) == 0:
 
@@ -359,6 +607,10 @@ if len(years_available) == 0:
 
     st.stop()
 
+
+# =========================================================
+# YEAR SELECTOR
+# =========================================================
 
 comparison_year = st.selectbox(
     "Select Year",
@@ -542,7 +794,23 @@ st.dataframe(
     hide_index=True,
     use_container_width=True
 )
+# =========================================================
+# DATA TABLE
+# =========================================================
 
+st.subheader("Selected Data")
+
+display_data = chart_data.rename(
+    columns={
+        value_column: comparison_choice
+    }
+)
+
+st.dataframe(
+    display_data,
+    hide_index=True,
+    use_container_width=True
+)
 
 # =========================================================
 # DATA SOURCES
