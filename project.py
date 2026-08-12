@@ -131,3 +131,58 @@ st.markdown(
     "(https://github.com/veronikayushchak-coder/"
     "dsc205-streamlit/blob/main/life-expectancy.csv)"
 )
+
+# --------------------------------------------------
+# LIFE EXPECTANCY OVER TIME
+# --------------------------------------------------
+
+st.divider()
+
+st.header("📈 Life Expectancy Over Time")
+
+st.write(
+    "Select a country to see how its life expectancy "
+    "has changed over the years."
+)
+
+# Country selector
+country_list = sorted(
+    df["Country"].dropna().unique()
+)
+
+selected_country = st.selectbox(
+    "Select a country",
+    country_list
+)
+
+# Filter for selected country
+country_data = df[
+    df["Country"] == selected_country
+].sort_values("Year")
+
+# Create line chart
+fig = px.line(
+    country_data,
+    x="Year",
+    y="Life Expectancy",
+    markers=True,
+    title=f"Life Expectancy in {selected_country}",
+    labels={
+        "Year": "Year",
+        "Life Expectancy": "Life Expectancy (years)"
+    }
+)
+
+fig.update_layout(
+    margin=dict(
+        l=0,
+        r=0,
+        t=60,
+        b=0
+    )
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
