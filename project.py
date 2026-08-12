@@ -265,31 +265,13 @@ st.divider()
 st.header("📊 Compare Countries")
 
 st.write(
-    """
-    Choose a year and a factor, then select three countries
-    to compare.
-    """
+    "Choose a factor first, then select a year and "
+    "three countries to compare."
 )
 
 
 # =========================================================
-# YEAR
-# =========================================================
-
-comparison_years = sorted(
-    df["Year"].dropna().unique()
-)
-
-comparison_year = st.selectbox(
-    "Select Year",
-    comparison_years,
-    index=len(comparison_years) - 1,
-    key="compare_year"
-)
-
-
-# =========================================================
-# RADIO BUTTON
+# CHOOSE WHAT TO COMPARE FIRST
 # =========================================================
 
 comparison_choice = st.radio(
@@ -300,144 +282,123 @@ comparison_choice = st.radio(
         "GDP per Capita",
         "Population"
     ],
-    horizontal=True
+    horizontal=True,
+    key="comparison_choice"
 )
 
 
 # =========================================================
-# FIND AVAILABLE COUNTRIES
-# =========================================================
-
-# ---------------------------------------------------------
-# LIFE EXPECTANCY
-# ---------------------------------------------------------
-
-life_available = df[
-    df["Year"] == comparison_year
-].copy()
-
-life_available = life_available.dropna(
-    subset=[
-        "Country",
-        "Life Expectancy"
-    ]
-)
-
-life_countries = set(
-    life_available["Country"]
-)
-
-
-# ---------------------------------------------------------
-# HEALTH SPENDING
-# ---------------------------------------------------------
-
-health_available = health_df[
-    health_df["Year"] == comparison_year
-].copy()
-
-health_available = health_available.dropna(
-    subset=[
-        "Country",
-        "Health Expenditure"
-    ]
-)
-
-health_countries = set(
-    health_available["Country"]
-)
-
-
-# ---------------------------------------------------------
-# GDP
-# ---------------------------------------------------------
-
-if gdp_column is not None:
-
-    gdp_available = gdp_df[
-        gdp_df["Year"] == comparison_year
-    ].copy()
-
-    gdp_available = gdp_available.dropna(
-        subset=[
-            "Country",
-            gdp_column
-        ]
-    )
-
-    gdp_countries = set(
-        gdp_available["Country"]
-    )
-
-else:
-
-    gdp_countries = set()
-
-
-# ---------------------------------------------------------
-# POPULATION
-# ---------------------------------------------------------
-
-if population_column is not None:
-
-    population_available = df[
-        df["Year"] == comparison_year
-    ].copy()
-
-    population_available = population_available.dropna(
-        subset=[
-            "Country",
-            population_column
-        ]
-    )
-
-    population_countries = set(
-        population_available["Country"]
-    )
-
-else:
-
-    population_countries = set()
-
-
-# =========================================================
-# CHOOSE COUNTRIES BASED ON SELECTED VARIABLE
+# DETERMINE DATASET AND VALUE COLUMN
 # =========================================================
 
 if comparison_choice == "Life Expectancy":
 
-    available_countries = sorted(
-        life_countries
-    )
+    comparison_df = df.copy()
+
+    value_column = "Life Expectancy"
+
 
 elif comparison_choice == "Health Spending":
 
-    available_countries = sorted(
-        health_countries
-    )
+    comparison_df = health_df.copy()
+
+    value_column = "Health Expenditure"
+
 
 elif comparison_choice == "GDP per Capita":
 
-    available_countries = sorted(
-        gdp_countries
-    )
+    comparison_df = gdp_df.copy()
+
+    value_column = gdp_column
+
 
 else:
 
-    available_countries = sorted(
-        population_countries
-    )
+    comparison_df = df.copy()
+
+    value_column = population_column
 
 
 # =========================================================
-# CHECK AVAILABLE COUNTRIES
+# CHECK IF DATA EXISTS
+# =========================================================
+
+if value_column is None:
+
+    st.warning(
+        f"{comparison_choice} data is not available "
+        "in the dataset."
+    )
+
+    st.stop()
+
+
+# =========================================================
+# FIND YEARS WITH DATA
+# =========================================================
+
+years_available = sorted(
+    comparison_df[
+        comparison_df[value_column].notna()
+    ]["Year"]
+    .dropna()
+    .unique()
+)
+
+
+# =========================================================
+# YEAR SELECTOR
+# =========================================================
+
+if len(years_available) == 0:
+
+    st.warning(
+        f"No years with {comparison_choice.lower()} "
+        "data were found."
+    )
+
+    st.stop()
+
+
+comparison_year = st.selectbox(
+    "Select Year",
+    years_available,
+    index=len(years_available) - 1,
+    key="comparison_year"
+)
+
+
+# =========================================================
+# FIND COUNTRIES WITH DATA FOR SELECTED YEAR
+# =========================================================
+
+available_data = comparison_df[
+    comparison_df["Year"] == comparison_year
+].copy()
+
+
+available_data = available_data.dropna(
+    subset=[
+        "Country",
+        value_column
+    ]
+)
+
+
+available_countries = sorted(
+    available_data["Country"].unique()
+)
+
+
+# =========================================================
+# CHECK COUNTRIES
 # =========================================================
 
 if len(available_countries) < 3:
 
     st.warning(
-        f"There are fewer than 3 countries with "
-        f"{comparison_choice.lower()} data available "
+        f"Fewer than 3 countries have "
+        f"{comparison_choice.lower()} data "
         f"for {comparison_year}."
     )
 
@@ -460,7 +421,7 @@ with country_col1:
         "Country 1",
         available_countries,
         index=0,
-        key="comparison_country_1"
+        key="compare_country_1"
     )
 
 
@@ -476,7 +437,7 @@ with country_col2:
         "Country 2",
         country_2_options,
         index=0,
-        key="comparison_country_2"
+        key="compare_country_2"
     )
 
 
@@ -495,9 +456,13 @@ with country_col3:
         "Country 3",
         country_3_options,
         index=0,
-        key="comparison_country_3"
+        key="compare_country_3"
     )
 
+
+# =========================================================
+# CREATE COMPARISON DATA
+# =========================================================
 
 selected_countries = [
     country_1,
@@ -506,154 +471,77 @@ selected_countries = [
 ]
 
 
-# =========================================================
-# CREATE COMPARISON DATA
-# =========================================================
-
-comparison_data = []
-
-
-for country in selected_countries:
-
-    row = {
-        "Country": country
-    }
-
-
-    # -----------------------------------------------------
-    # LIFE EXPECTANCY
-    # -----------------------------------------------------
-
-    life_row = df[
-        (df["Country"] == country)
-        & (df["Year"] == comparison_year)
+chart_data = available_data[
+    available_data["Country"].isin(
+        selected_countries
+    )
+][
+    [
+        "Country",
+        value_column
     ]
-
-    if not life_row.empty:
-
-        row["Life Expectancy"] = life_row[
-            "Life Expectancy"
-        ].iloc[0]
+].copy()
 
 
-    # -----------------------------------------------------
-    # HEALTH SPENDING
-    # -----------------------------------------------------
+# =========================================================
+# BAR CHART
+# =========================================================
 
-    health_row = health_df[
-        (health_df["Country"] == country)
-        & (health_df["Year"] == comparison_year)
-    ]
-
-    if not health_row.empty:
-
-        row["Health Spending"] = health_row[
-            "Health Expenditure"
-        ].iloc[0]
+st.subheader(
+    f"{comparison_choice} Comparison"
+)
 
 
-    # -----------------------------------------------------
-    # GDP
-    # -----------------------------------------------------
+fig_comparison = px.bar(
+    chart_data,
+    x="Country",
+    y=value_column,
+    title=(
+        f"{comparison_choice} — "
+        f"{comparison_year}"
+    ),
+    labels={
+        value_column: comparison_choice
+    },
+    text=value_column
+)
 
-    if gdp_column is not None:
+fig_comparison.update_traces(
+    textposition="outside"
+)
 
-        gdp_row = gdp_df[
-            (gdp_df["Country"] == country)
-            & (gdp_df["Year"] == comparison_year)
-        ]
+fig_comparison.update_layout(
+    margin=dict(
+        l=0,
+        r=0,
+        t=60,
+        b=0
+    )
+)
 
-        if not gdp_row.empty:
-
-            row["GDP per Capita"] = gdp_row[
-                gdp_column
-            ].iloc[0]
-
-
-    # -----------------------------------------------------
-    # POPULATION
-    # -----------------------------------------------------
-
-    if population_column is not None:
-
-        population_row = df[
-            (df["Country"] == country)
-            & (df["Year"] == comparison_year)
-        ]
-
-        if not population_row.empty:
-
-            row["Population"] = population_row[
-                population_column
-            ].iloc[0]
-
-
-    comparison_data.append(row)
-
-
-comparison_df = pd.DataFrame(
-    comparison_data
+st.plotly_chart(
+    fig_comparison,
+    use_container_width=True
 )
 
 
 # =========================================================
-# COMPARISON CHART
+# DATA TABLE
 # =========================================================
 
-if comparison_choice in comparison_df.columns:
+st.subheader("Selected Data")
 
-    chart_data = comparison_df[
-        [
-            "Country",
-            comparison_choice
-        ]
-    ].dropna()
+display_data = chart_data.rename(
+    columns={
+        value_column: comparison_choice
+    }
+)
 
-
-    fig_comparison = px.bar(
-        chart_data,
-        x="Country",
-        y=comparison_choice,
-        title=(
-            f"{comparison_choice} Comparison — "
-            f"{comparison_year}"
-        ),
-        labels={
-            comparison_choice: comparison_choice
-        },
-        text=comparison_choice
-    )
-
-    fig_comparison.update_traces(
-        textposition="outside"
-    )
-
-    fig_comparison.update_layout(
-        margin=dict(
-            l=0,
-            r=0,
-            t=60,
-            b=0
-        )
-    )
-
-    st.plotly_chart(
-        fig_comparison,
-        use_container_width=True
-    )
-
-
-    # =====================================================
-    # DATA TABLE
-    # =====================================================
-
-    st.subheader("Selected Data")
-
-    st.dataframe(
-        chart_data,
-        hide_index=True,
-        use_container_width=True
-    )
+st.dataframe(
+    display_data,
+    hide_index=True,
+    use_container_width=True
+)
 
 
 # =========================================================
